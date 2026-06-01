@@ -2,7 +2,7 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"gh
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -33,9 +33,13 @@ func Read() (Config, error) {
 	return cfg, nil
 }
 
-func (c *Config) SetUser(user string) {
+func (c *Config) SetUser(user string) error {
 	c.User = user
-	write(*c)
+	err := write(*c)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func getConfigFilePath() (string, error) {

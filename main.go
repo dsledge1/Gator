@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/dsledge1/Gator/internal/config"
 )
@@ -12,24 +13,26 @@ func main() {
 		fmt.Printf("Error reading file: %v\n", err)
 		return
 	}
-	cfg.SetUser("david")
-	config.Read()
-}
 
-func login() {
+	s := state{config: &cfg}
+	c := commands{handlerMap: make(map[string]func(*state, command) error)}
+	c.register("login", handlerLogin)
+	args := os.Args
+	if len(args) < 2 {
+		fmt.Println("Not enough arguments")
+		os.Exit(1)
+	}
+	err = c.run(&s, command{name: args[1], args: args[2:]})
+	if err != nil {
 
-}
-
-func registerUser() {
-
-}
-
-func users() {
-
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
 
 func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) == 0 {
+		fmt.Println("beep")
 		return fmt.Errorf("login expects a single argument: the username")
 	}
 	err := s.config.SetUser(cmd.args[0])
@@ -50,18 +53,22 @@ type command struct {
 }
 
 type commands struct {
-	login        command
-	registerUser command
-	users        command
-	handlerMap   map[string]func(*state, command) error
+	handlerMap map[string]func(*state, command) error
 }
 
 func (c *commands) run(s *state, cmd command) error {
-	if handler, ok := commands.handlerMap[cmd]; ok {
+	if runCommand, ok := c.handlerMap[cmd.name]; ok {
+		return runCommand(s, cmd)
 
+	} else {
+		return fmt.Errorf("Unknown command: %s", cmd.name)
 	}
 }
 
 func (c *commands) register(name string, f func(*state, command) error) {
-
+	if c.handlerMap[name] == nil {
+		c.handlerMap[name] = f
+	} else {
+		fmt.Printf("Handler for %s already exists\n", name)
+	}
 }
