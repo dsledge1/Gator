@@ -1,10 +1,16 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/dsledge1/Gator/internal/config"
+	"github.com/dsledge1/Gator/internal/database"
+	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -28,6 +34,15 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	db, err := sql.Open("postgres", s.config.DB_URL)
+	if err != nil {
+		fmt.Printf("Error connecting to database: %v\n", err)
+		return
+	}
+	defer db.Close()
+	dbQueries := database.New(db)
+	s.db = dbQueries
+
 }
 
 func handlerLogin(s *state, cmd command) error {
@@ -43,8 +58,33 @@ func handlerLogin(s *state, cmd command) error {
 	return nil
 }
 
+func handlerRegister(s *state, cmd command) error {
+	if len(cmd.args) == 0 {
+		return fmt.Errorf("register expects a single argument: the username")
+	}
+	userName := cmd.args[0]
+	ctx := context.Background()
+	uid := int32(uuid.New().ID()) //Likely issue here
+	t := time.Now()
+	user := database.CreateUserParams{Name: userName,
+		ID:        uid,
+		CreatedAt: t,
+		UpdatedAt: t,
+	}
+	u, err := s.db.CreateUser(ctx, user)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Printf("User created: %v\n", u)
+	fmt.Printf("User data: %v\n", user)
+	s.config.SetUser(userName)
+	return nil
+}
+
 type state struct {
 	config *config.Config
+	db     *database.Queries
 }
 
 type command struct {
