@@ -23,6 +23,7 @@ func main() {
 	s := state{config: &cfg}
 	c := commands{handlerMap: make(map[string]func(*state, command) error)}
 	c.register("login", handlerLogin)
+	c.register("register", handlerRegister)
 	args := os.Args
 	if len(args) < 2 {
 		fmt.Println("Not enough arguments")
@@ -64,7 +65,7 @@ func handlerRegister(s *state, cmd command) error {
 	}
 	userName := cmd.args[0]
 	ctx := context.Background()
-	uid := int32(uuid.New().ID()) //Likely issue here
+	uid := uuid.New().String() //Likely issue here
 	t := time.Now()
 	user := database.CreateUserParams{Name: userName,
 		ID:        uid,
