@@ -57,16 +57,18 @@ func handlerLogin(s *state, cmd command) error {
 		fmt.Println("beep")
 		return fmt.Errorf("login expects a single argument: the username")
 	}
-	err := s.config.SetUser(cmd.args[0])
+	ctx := context.Background()
+	loginName := cmd.args[0]
+	//if not in db, error and exit
+	if _, err := s.db.GetUser(ctx, loginName); err != nil {
+		return fmt.Errorf("User not found")
+	}
+	err := s.config.SetUser(loginName)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	ctx := context.Background()
-	//if not in db, error and exit
-	if _, err := s.db.GetUser(ctx, s.config.User); err != nil {
-		return fmt.Errorf("User not found")
-	}
+
 	fmt.Println("User set to: ", s.config.User)
 	return nil
 }
@@ -124,4 +126,12 @@ func (c *commands) register(name string, f func(*state, command) error) {
 	} else {
 		fmt.Printf("Handler for %s already exists\n", name)
 	}
+}
+
+func (c *commands) reset(s *state) error {
+	err := s.db.ClearTable(context.Background())
+	if err != nil {
+		return fmt.Errorf("Error clearing table: %v", err)
+	}
+	return nil
 }
