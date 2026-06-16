@@ -60,6 +60,7 @@ func write(cfg Config) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Writing config to path %v\n", path)
 	err = os.WriteFile(path, json, 0666)
 	if err != nil {
 		return err

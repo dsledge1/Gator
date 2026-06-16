@@ -14,35 +14,41 @@ import (
 )
 
 func main() {
-	cfg, err := config.Read()
+	cfg, err := config.Read() //read config
 	if err != nil {
 		fmt.Printf("Error reading file: %v\n", err)
 		return
 	}
-
 	s := state{config: &cfg}
-	c := commands{handlerMap: make(map[string]func(*state, command) error)}
-	c.register("login", handlerLogin)
-	c.register("register", handlerRegister)
-	args := os.Args
-	if len(args) < 2 {
-		fmt.Println("Not enough arguments")
-		os.Exit(1)
-	}
-	err = c.run(&s, command{name: args[1], args: args[2:]})
-	if err != nil {
 
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	//open DB
 	db, err := sql.Open("postgres", s.config.DB_URL)
 	if err != nil {
 		fmt.Printf("Error connecting to database: %v\n", err)
 		return
 	}
 	defer db.Close()
+	//Create DB Queries
 	dbQueries := database.New(db)
+	//Create state with config and db
 	s.db = dbQueries
+	//Register Commands
+	c := commands{handlerMap: make(map[string]func(*state, command) error)}
+	c.register("login", handlerLogin)
+	c.register("register", handlerRegister)
+	//Parse Args
+	args := os.Args
+	if len(args) < 2 {
+		fmt.Println("Not enough arguments")
+		os.Exit(1)
+	}
+	//run command
+	err = c.run(&s, command{name: args[1], args: args[2:]})
+	if err != nil {
+
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 }
 
@@ -53,7 +59,13 @@ func handlerLogin(s *state, cmd command) error {
 	}
 	err := s.config.SetUser(cmd.args[0])
 	if err != nil {
-		return err
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	ctx := context.Background()
+	//if not in db, error and exit
+	if _, err := s.db.GetUser(ctx, s.config.User); err != nil {
+		return fmt.Errorf("User not found")
 	}
 	fmt.Println("User set to: ", s.config.User)
 	return nil
@@ -65,7 +77,7 @@ func handlerRegister(s *state, cmd command) error {
 	}
 	userName := cmd.args[0]
 	ctx := context.Background()
-	uid := uuid.New().String() //Likely issue here
+	uid := uuid.New() //Likely issue here
 	t := time.Now()
 	user := database.CreateUserParams{Name: userName,
 		ID:        uid,
